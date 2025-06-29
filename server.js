@@ -1,5 +1,5 @@
 // Importa o framework Express
-const express = require('express');
+const express = require("express");
 
 // Cria uma instância do aplicativo Express
 const app = express();
@@ -10,24 +10,24 @@ const PORT = process.env.PORT || 3000;
 // Middleware para habilitar CORS (Cross-Origin Resource Sharing)
 // Isso permite que seu proxy seja acessado por aplicações web de outros domínios
 app.use((req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', '*'); // Permite qualquer origem
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Range');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges');
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Permite qualquer origem
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Range");
+  res.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range, Accept-Ranges");
   
   // O navegador envia uma requisição OPTIONS (preflight) para verificar as permissões de CORS
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
   next();
 });
 
 // Rota de proxy principal
-app.get('/api/proxy', async (req, res) => {
+app.get("/api/proxy", async (req, res) => {
   const url = req.query.url;
 
   if (!url) {
-    return res.status(400).json({ error: 'URL parameter is missing' });
+    return res.status(400).json({ error: "URL parameter is missing" });
   }
 
   console.log(`Recebida requisição de proxy para: ${url}`);
@@ -36,7 +36,7 @@ app.get('/api/proxy', async (req, res) => {
     // Copia os cabeçalhos da requisição original, exceto alguns que podem causar problemas
     const headers = {};
     for (const key in req.headers) {
-      if (key !== 'host' && key !== 'connection' && key !== 'accept-encoding') {
+      if (key !== "host" && key !== "connection" && key !== "accept-encoding") {
         headers[key] = req.headers[key];
       }
     }
@@ -54,31 +54,34 @@ app.get('/api/proxy', async (req, res) => {
       throw new Error(`O servidor de destino respondeu com o status: ${response.status} ${response.statusText}. Detalhes: ${errorText}`);
     }
 
-    // Verifica o Content-Type para decidir como lidar com a resposta
-    const contentType = response.headers.get('content-type');
-
-    // Repassa todos os cabeçalhos da resposta de destino para a nossa resposta.
+    // Repassa todos os cabeçalhos da resposta de destino para a nossa resposta,
+    // exceto 'content-encoding' para evitar problemas de decodificação no navegador.
     response.headers.forEach((value, name) => {
-      res.setHeader(name, value);
+      if (name.toLowerCase() !== "content-encoding") {
+        res.setHeader(name, value);
+      }
     });
 
     // Define o status da nossa resposta para ser o mesmo da resposta de destino
     res.status(response.status);
 
-    if (contentType && contentType.includes('application/json')) {
-      // Se for JSON, lê o corpo como JSON e envia
-      const json = await response.json();
-      res.json(json);
-    } else {
-      // Caso contrário (provavelmente um stream de vídeo), usa pipe
-      response.body.pipe(res);
+    // Tenta ler o corpo da resposta como texto
+    const responseText = await response.text();
+
+    try {
+      // Tenta parsear o texto como JSON
+      const json = JSON.parse(responseText);
+      res.json(json); // Se for JSON válido, envia como JSON
+    } catch (e) {
+      // Se não for JSON válido, envia o texto puro
+      res.send(responseText); 
     }
 
   } catch (error) {
     // Em caso de erro (falha de rede, erro do servidor de destino, etc.)
-    console.error('Erro no proxy (detalhes):', error);
+    console.error("Erro no proxy (detalhes):", error);
     res.status(500).json({
-      error: 'Falha ao processar a requisição de proxy.',
+      error: "Falha ao processar a requisição de proxy.",
       details: error.message,
       fullError: error.toString() // Adiciona o erro completo para mais detalhes
     });
@@ -86,8 +89,8 @@ app.get('/api/proxy', async (req, res) => {
 });
 
 // Rota raiz para uma verificação rápida se o servidor está no ar
-app.get('/', (req, res) => {
-  res.send('Servidor proxy está funcionando. Use a rota /api/proxy?url=URL_DO_VIDEO para usá-lo.');
+app.get("/", (req, res) => {
+  res.send("Servidor proxy está funcionando. Use a rota /api/proxy?url=URL_DO_VIDEO para usá-lo.");
 });
 
 // Inicia o servidor e o faz "escutar" por requisições na porta definida
