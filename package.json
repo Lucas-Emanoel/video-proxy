@@ -2,11 +2,11 @@
   "name": "video-proxy",
   "version": "1.0.0",
   "description": "Proxy de vídeo para resolver problemas de CORS",
-  "main": "server.js",  
+  "main": "src/server.js",  <-- Mudei aqui para src/server.js
   "scripts": {
     "dev": "vercel dev",
     "build": "echo 'Build complete'",
-    "start": "node server.js"  
+    "start": "node src/server.js"  <-- Mudei aqui para node src/server.js
   },
   "dependencies": {
     "node-fetch": "^2.6.7",
