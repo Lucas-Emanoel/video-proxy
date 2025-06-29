@@ -1,25 +1,17 @@
 {
   "name": "video-proxy",
   "version": "1.0.0",
+  "description": "Proxy de vídeo para resolver problemas de CORS",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
+  "author": "Lucas Emanoel",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "axios": "^1.10.0",
+    "axios": "^1.7.2",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^4.19.2"
   }
-  // package.json
-{
-  // ... outras chaves ...
-  "scripts": {
-    "start": "node index.js"
-  },
-  // ... outras chaves ...
-}
 }
