@@ -1,54 +1,73 @@
-// index.js
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
-
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const app = express();
-const PORT = process.env.PORT || 3001;
 
-// Habilita CORS para todas as origens. Em produção, restrinja para o seu domínio.
-app.use(cors({ origin: '*' }));
+// Configurar CORS para permitir todas as origens
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Range'],
+    credentials: false
+}));
 
-// Rota de "saúde" para verificar se o servidor está no ar
-app.get('/', (req, res) => {
-    res.send('Servidor Proxy AtennaFlix está no ar!');
+// Middleware para logs
+app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
 });
 
-// A rota principal do proxy
-app.get('/play', async (req, res) => {
-  const videoUrl = req.query.url;
+// Rota principal do proxy
+app.get('/', (req, res) => {
+    const targetUrl = req.query.url;
+    
+    if (!targetUrl) {
+        return res.status(400).json({ error: 'URL parameter is required' });
+    }
 
-  if (!videoUrl) {
-    return res.status(400).send('URL do vídeo não fornecida.');
-  }
+    console.log(`Proxying request to: ${targetUrl}`);
 
-  console.log(`Recebida requisição de proxy para: ${videoUrl}`);
-
-  try {
-    // Faz a requisição ao servidor de vídeo para receber um stream
-    const response = await axios({
-      method: 'get',
-      url: videoUrl,
-      responseType: 'stream',
-      // Repassa o cabeçalho Range para permitir avançar/retroceder no vídeo
-      headers: {
-        'Range': req.headers.range || 'bytes=0-'
-      }
+    // Configurar proxy middleware
+    const proxy = createProxyMiddleware({
+        target: targetUrl,
+        changeOrigin: true,
+        pathRewrite: {
+            '^/': '', // Remove o path inicial
+        },
+        onProxyReq: (proxyReq, req, res) => {
+            // Adicionar headers necessários
+            proxyReq.setHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+            proxyReq.setHeader('Accept', '*/*');
+            proxyReq.setHeader('Accept-Language', 'en-US,en;q=0.9');
+        },
+        onProxyRes: (proxyRes, req, res) => {
+            // Adicionar headers CORS na resposta
+            proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+            proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+            proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Range';
+            
+            console.log(`Response status: ${proxyRes.statusCode}`);
+            console.log(`Response headers:`, proxyRes.headers);
+        },
+        onError: (err, req, res) => {
+            console.error('Proxy error:', err);
+            res.status(500).json({ error: 'Proxy error', details: err.message });
+        }
     });
 
-    // Repassa os cabeçalhos da resposta original (Content-Type, Content-Length, etc.)
-    res.writeHead(response.status, response.headers);
-
-    // Usa .pipe() para transmitir o vídeo diretamente para o cliente.
-    // Para axios, o stream está em `response.data`.
-    response.data.pipe(res);
-
-  } catch (error) {
-    console.error(`Erro no proxy para ${videoUrl}:`, error.message);
-    res.status(error.response?.status || 500).send('Erro ao buscar o vídeo via proxy.');
-  }
+    // Executar o proxy
+    proxy(req, res);
 });
 
-app.listen(PORT, () => {
-  console.log(`Servidor proxy rodando na porta ${PORT}`);
+// Rota de health check
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
+
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor proxy rodando na porta ${PORT}`);
+    console.log(`Health check disponível em: http://localhost:${PORT}/health`);
+});
+
