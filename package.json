@@ -1,18 +1,16 @@
 {
   "name": "video-proxy",
   "version": "1.0.0",
-  "description": "Proxy de vídeo para resolver problemas de CORS",
-  "main": "server.js",
+  "description": "Proxy para streams de vídeo",
+  "main": "index.js",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'Build complete'",
-    "start": "node server.js"
+    "start": "node index.js"
   },
+  "author": "",
+  "license": "ISC",
   "dependencies": {
-    "node-fetch": "^2.6.7",
-    "express": "^4.17.1"
-  },
-  "engines": {
-    "node": ">=14.x"
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
   }
 }
